@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Die Einzig Wahre PCB – IO-Konfigurator</title>
+
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="style.css" />
+
+    <script defer src="script.js"></script>
+</head>
+
+<body>
+
+    <header class="app-header">
+        <div class="logo-row">
+            <img src="assets/icon-192.svg" class="logo" alt="Logo" />
+            <div>
+                <h1>Die Einzig Wahre PCB</h1>
+                <p class="subtitle">ESP32-C6 • 16×16 IO-Konfigurator</p>
+            </div>
+        </div>
+    </header>
+
+    <main id="view-container">
+
+        <!-- ============ VIEW 1 – SERIAL CONNECT ============ -->
+        <section id="view-connect" class="view active">
+            <h2>Verbindung zum ESP32-C6 herstellen</h2>
+            <p>
+                Verbinde deinen <b>ESP32-C6</b> per USB und klicke unten auf
+                <b>Serielle Verbindung starten</b>.
+                Funktioniert nur in Chrome/Edge mit WebSerial.
+            </p>
+
+            <div class="card">
+                <button class="btn primary" id="btn-connect">
+                    🔌 Serielle Verbindung starten
+                </button>
+
+                <button class="btn secondary" id="btn-dummy">
+                    🧪 Dummy-Modus aktivieren
+                </button>
+
+                <div id="serial-status" class="status status-idle">
+                    Noch keine Verbindung.
+                </div>
+
+                <p class="hint">
+                    Hinweis: Dummy-Modus erlaubt volle Nutzung der Oberfläche, auch ohne ESP32.
+                </p>
+            </div>
+        </section>
+
+
+        <!-- ============ VIEW 2 – MATRIX CONFIG ============ -->
+        <section id="view-matrix" class="view">
+            <div class="matrix-header">
+                <h2>IO-Matrix konfigurieren</h2>
+                <p>Lege fest, welcher Input welchen Output schaltet.</p>
+            </div>
+
+            <div class="matrix-toolbar">
+                <button class="btn primary" id="btn-save-eeprom">💾 In EEPROM speichern</button>
+                <button class="btn danger" id="btn-clear">❌ Alles löschen</button>
+            </div>
+
+            <div class="matrix-wrapper">
+                <table id="io-matrix"></table>
+            </div>
+
+            <h3>Debug</h3>
+            <pre class="debug-output" id="debug-log"></pre>
+        </section>
+
+    </main>
+
+    <footer class="app-footer">
+        <span>© 2025 – Die Einzig Wahre PCB</span>
+        <span class="dot">•</span>
+        <span>PWA / Offline-fähig</span>
+    </footer>
+
+</body>
+</html>

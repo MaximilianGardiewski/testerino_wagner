@@ -1,0 +1,26 @@
+﻿{
+  "name": "Die Einzig Wahre PCB – IO-Konfigurator",
+  "short_name": "PCB-Config",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#111827",
+  "description": "PWA zum Konfigurieren der Einzig Wahren PCB (ESP32-C6, 16x Inputs/Outputs).",
+  "icons": [
+    {
+      "src": "assets/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "assets/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "assets/favicon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml"
+    }
+  ]
+}
