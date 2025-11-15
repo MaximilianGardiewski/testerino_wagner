@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
             writer: null,
             connected: false,
             reading: false,
+            isDummy: false, // Flag for dummy connection
         },
         config: createDefaultConfig(),
         ui: {
@@ -29,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         viewConnect: document.getElementById('view-connect'),
         viewMain: document.getElementById('view-main'),
         btnConnect: document.getElementById('btn-connect'),
+        btnConnectDummy: document.getElementById('btn-connect-dummy'),
         btnDisconnect: document.getElementById('btn-disconnect'),
         statusBadge: document.getElementById('serial-status'),
         btnLoad: document.getElementById('btn-load'),
@@ -71,9 +73,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateConnectionStatus(connected) {
         state.serial.connected = connected;
         if (connected) {
-            ui.statusBadge.textContent = 'Verbunden';
+            ui.statusBadge.textContent = state.serial.isDummy ? 'Verbunden (Dummy)' : 'Verbunden';
             ui.statusBadge.className = 'status-badge status-connected';
             ui.btnConnect.disabled = true;
+            ui.btnConnectDummy.disabled = true;
             ui.btnDisconnect.disabled = false;
             ui.btnLoad.disabled = false;
             ui.btnSend.disabled = false;
@@ -83,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ui.statusBadge.textContent = 'Nicht verbunden';
             ui.statusBadge.className = 'status-badge status-disconnected';
             ui.btnConnect.disabled = false;
+            ui.btnConnectDummy.disabled = false;
             ui.btnDisconnect.disabled = true;
             ui.btnLoad.disabled = true;
             ui.btnSend.disabled = true;
@@ -97,7 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initMatrix() {
         ui.matrixContainer.innerHTML = ''; // Clear previous
-        // Top labels (IN1..IN16)
         ui.matrixContainer.appendChild(document.createElement('div')); // Top-left corner
         for (let i = 1; i <= 16; i++) {
             const label = document.createElement('div');
@@ -105,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
             label.textContent = `IN${i}`;
             ui.matrixContainer.appendChild(label);
         }
-        // Side labels and cells
         for (let row = 0; row < 16; row++) {
             const label = document.createElement('div');
             label.className = 'matrix-label';
@@ -178,65 +180,99 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Handlers
     // ============================================================
 
-    ui.btnConnect.addEventListener('click', connectSerial);
-    ui.btnDisconnect.addEventListener('click', disconnectSerial);
-    ui.btnLoad.addEventListener('click', () => sendLine('GETCFG'));
-    ui.btnSend.addEventListener('click', sendConfigToDevice);
-    ui.btnClearLog.addEventListener('click', () => ui.logConsole.innerHTML = '');
+    function setupEventListeners() {
+        ui.btnConnect.addEventListener('click', connectSerial);
+        ui.btnConnectDummy.addEventListener('click', connectDummySerial);
+        ui.btnDisconnect.addEventListener('click', disconnectSerial);
+        ui.btnLoad.addEventListener('click', () => sendLine('GETCFG'));
+        ui.btnSend.addEventListener('click', sendConfigToDevice);
+        ui.btnClearLog.addEventListener('click', () => ui.logConsole.innerHTML = '');
 
-    ui.shiftLevelSelector.addEventListener('click', (e) => {
-        if (e.target.classList.contains('tab-btn')) {
-            ui.shiftLevelSelector.querySelector('.active').classList.remove('active');
-            e.target.classList.add('active');
-            state.ui.currentLevel = e.target.dataset.level;
-            renderMatrixForCurrentLevel();
-        }
-    });
-
-    ui.matrixContainer.addEventListener('click', (e) => {
-        if (e.target.classList.contains('matrix-cell')) {
-            const row = parseInt(e.target.dataset.row, 10);
-            const col = parseInt(e.target.dataset.col, 10);
-            const levelData = state.config[state.ui.currentLevel];
-            levelData[row][col] = !levelData[row][col];
-            renderMatrixForCurrentLevel();
-        }
-    });
-
-    ui.shiftFunctionContainer.addEventListener('change', (e) => {
-        if (e.target.tagName === 'SELECT') {
-            const index = parseInt(e.target.dataset.inputIndex, 10);
-            const value = parseInt(e.target.value, 10);
-            state.config.shiftFunctionID[index] = value;
-        }
-    });
-    
-    ui.btnSetAll.addEventListener('click', () => updateMatrixAll(true));
-    ui.btnClearAll.addEventListener('click', () => updateMatrixAll(false));
-    ui.btnRandomFill.addEventListener('click', () => {
-        const levelData = state.config[state.ui.currentLevel];
-        for (let r = 0; r < 16; r++) {
-            for (let c = 0; c < 16; c++) {
-                levelData[r][c] = Math.random() > 0.5;
+        ui.shiftLevelSelector.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tab-btn')) {
+                ui.shiftLevelSelector.querySelector('.active').classList.remove('active');
+                e.target.classList.add('active');
+                state.ui.currentLevel = e.target.dataset.level;
+                renderMatrixForCurrentLevel();
             }
-        }
-        renderMatrixForCurrentLevel();
-    });
+        });
+
+        ui.matrixContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('matrix-cell')) {
+                const row = parseInt(e.target.dataset.row, 10);
+                const col = parseInt(e.target.dataset.col, 10);
+                state.config[state.ui.currentLevel][row][col] = !state.config[state.ui.currentLevel][row][col];
+                renderMatrixForCurrentLevel();
+            }
+        });
+
+        ui.shiftFunctionContainer.addEventListener('change', (e) => {
+            if (e.target.tagName === 'SELECT') {
+                const index = parseInt(e.target.dataset.inputIndex, 10);
+                const value = parseInt(e.target.value, 10);
+                state.config.shiftFunctionID[index] = value;
+            }
+        });
+        
+        ui.btnSetAll.addEventListener('click', () => updateMatrixAll(true));
+        ui.btnClearAll.addEventListener('click', () => updateMatrixAll(false));
+        ui.btnRandomFill.addEventListener('click', () => {
+            const levelData = state.config[state.ui.currentLevel];
+            for (let r = 0; r < 16; r++) {
+                for (let c = 0; c < 16; c++) {
+                    levelData[r][c] = Math.random() > 0.5;
+                }
+            }
+            renderMatrixForCurrentLevel();
+        });
+    }
     
     function updateMatrixAll(value) {
         const levelData = state.config[state.ui.currentLevel];
-        for (let r = 0; r < 16; r++) {
-            for (let c = 0; c < 16; c++) {
-                levelData[r][c] = value;
-            }
-        }
+        levelData.forEach(row => row.fill(value));
         renderMatrixForCurrentLevel();
     }
 
+    // ============================================================
+    // Web Serial & Dummy Logic
+    // ============================================================
 
-    // ============================================================
-    // Web Serial API Logic
-    // ============================================================
+    function connectDummySerial() {
+        state.serial.isDummy = true;
+        state.serial.writer = {
+            write: (line) => {
+                log(line.trim(), 'tx');
+                handleDummyMcuLogic(line.trim());
+                return Promise.resolve();
+            },
+            close: () => Promise.resolve(),
+        };
+        state.serial.reader = null;
+
+        updateConnectionStatus(true);
+        log('Dummy-Seriell-Verbindung hergestellt.', 'info');
+        setTimeout(() => sendLine('GETCFG'), 500);
+    }
+    
+    function handleDummyMcuLogic(line) {
+        if (line === 'GETCFG') {
+            setTimeout(() => {
+                const dummyConfig = createDefaultConfig();
+                for (let r = 0; r < 16; r++) {
+                    for (let c = 0; c < 16; c++) {
+                        dummyConfig.normal[r][c] = Math.random() > 0.8;
+                    }
+                    dummyConfig.shiftFunctionID[r] = Math.floor(Math.random() * 4);
+                }
+                const jsonString = JSON.stringify(dummyConfig);
+                handleSerialLine(`CFG:${jsonString}`);
+            }, 300);
+        } else if (line.startsWith('SETCFG:')) {
+            setTimeout(() => {
+                handleSerialLine('OK: Dummy config received.');
+            }, 150);
+        }
+    }
 
     async function connectSerial() {
         if (!('serial' in navigator)) {
@@ -247,23 +283,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const port = await navigator.serial.requestPort();
             await port.open({ baudRate: 115200 });
             state.serial.port = port;
+            state.serial.isDummy = false;
 
-            // Setup reader/writer streams
             const textEncoder = new TextEncoderStream();
             state.serial.writer = textEncoder.writable.getWriter();
-            const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
+            textEncoder.readable.pipeTo(port.writable);
             
             const textDecoder = new TextDecoderStream();
-            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            port.readable.pipeTo(textDecoder.writable);
             state.serial.reader = textDecoder.readable.getReader();
 
             updateConnectionStatus(true);
             log('Serielle Verbindung erfolgreich hergestellt.', 'info');
             
-            // Automatically request config after connecting
             setTimeout(() => sendLine('GETCFG'), 500);
-
-            // Start reading loop
             readLoop();
 
         } catch (error) {
@@ -273,30 +306,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function disconnectSerial() {
+        if (state.serial.isDummy) {
+            state.serial.writer = null;
+            state.serial.isDummy = false;
+            updateConnectionStatus(false);
+            log('Dummy-Verbindung getrennt.', 'info');
+            return;
+        }
+
         if (!state.serial.port) return;
 
-        // Stop the read loop
         if (state.serial.reader) {
-            try {
-                await state.serial.reader.cancel();
-            } catch (error) {
-                // Ignore cancel error
-            }
+            try { await state.serial.reader.cancel(); } catch (error) { /* Ignore */ }
         }
-        
         if (state.serial.writer) {
-            try {
-                 await state.serial.writer.close();
-            } catch (error) {
-                // Ignore close error
-            }
+            try { await state.serial.writer.close(); } catch (error) { /* Ignore */ }
         }
-        
-        try {
-            await state.serial.port.close();
-        } catch(error) {
-            // Ignore close error
-        }
+        try { await state.serial.port.close(); } catch(error) { /* Ignore */ }
 
         state.serial.port = null;
         state.serial.reader = null;
@@ -311,11 +337,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
-            await state.serial.writer.write(line + '\n');
-            log(line, 'tx');
+            await state.serial.writer..gwrite(line + '\n');
+            if (!state.serial.isDummy) {
+                log(line, 'tx');
+            }
         } catch (error) {
             log(`Sendefehler: ${error.message}`, 'info');
-            disconnectSerial(); // Disconnect on write error
+            if (!state.serial.isDummy) disconnectSerial();
         }
     }
     
@@ -329,18 +357,14 @@ document.addEventListener('DOMContentLoaded', () => {
         while (state.serial.port && state.serial.port.readable) {
             try {
                 const { value, done } = await state.serial.reader.read();
-                if (done) {
-                    // Reader has been canceled.
-                    break;
-                }
+                if (done) break;
+                
                 lineBuffer += value;
-                let EOL_index;
-                while ((EOL_index = lineBuffer.indexOf('\n')) >= 0) {
-                    const line = lineBuffer.slice(0, EOL_index).trim();
-                    lineBuffer = lineBuffer.slice(EOL_index + 1);
-                    if (line) {
-                        handleSerialLine(line);
-                    }
+                let eolIndex;
+                while ((eolIndex = lineBuffer.indexOf('\n')) >= 0) {
+                    const line = lineBuffer.slice(0, eolIndex).trim();
+                    lineBuffer = lineBuffer.slice(eolIndex + 1);
+                    if (line) handleSerialLine(line);
                 }
             } catch (error) {
                 log(`Lesefehler: ${error.message}`, 'info');
@@ -363,36 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (line.startsWith('OK')) {
             log('Gerät hat die Konfiguration bestätigt.', 'rx');
         }
-        // Other messages are just logged
     }
-    
-    /*
-    MCU PSEUDO-CODE / PROTOCOL DOCUMENTATION
-    
-    void handleSerial() {
-      if (Serial.available() > 0) {
-        String line = Serial.readStringUntil('\n');
-        line.trim();
-
-        if (line.equals("GETCFG")) {
-          // 1. Read config struct from EEPROM
-          // 2. Serialize struct to a JSON string (e.g., using ArduinoJson)
-          // 3. Send back via Serial:
-          Serial.print("CFG:");
-          Serial.println(jsonString);
-        }
-        else if (line.startsWith("SETCFG:")) {
-          // 1. Extract JSON part from the line
-          String jsonPart = line.substring(7);
-          // 2. Deserialize JSON into the config struct (e.g., using ArduinoJson)
-          // 3. Write the new struct to EEPROM
-          // 4. Send confirmation
-          Serial.println("OK");
-        }
-      }
-    }
-    */
-
 
     // ============================================================
     // PWA Service Worker
@@ -401,12 +396,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
+                    .then(reg => console.log('SW registered:', reg))
+                    .catch(err => console.log('SW registration failed:', err));
             });
         }
     }
@@ -417,8 +408,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function init() {
         initMatrix();
         initShiftFunctions();
-        renderMatrixForCurrentLevel();
-        renderShiftFunctions();
+        setupEventListeners();
+        applyConfigToUI(createDefaultConfig());
         registerServiceWorker();
         log('Anwendung initialisiert. Bereit zum Verbinden.', 'info');
     }
