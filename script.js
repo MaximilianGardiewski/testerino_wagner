@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
-            await state.serial.writer..gwrite(line + '\n');
+            await state.serial.writer.write(line + '\n');
             if (!state.serial.isDummy) {
                 log(line, 'tx');
             }
